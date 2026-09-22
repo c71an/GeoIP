@@ -1,0 +1,82 @@
+name: Build and Release Custom GeoIP
+
+on:
+  schedule:
+    # 每天 UTC 20:00 (北京时间 04:00) 自动同步上游并构建
+    - cron: '0 20 * * *'
+  workflow_dispatch: # 支持在 GitHub Actions 页面手动点击运行
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 必须具备写权限以创建 GitHub Release
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Install v2fly/geoip
+        run: |
+          go install github.com/v2fly/geoip@latest
+
+      - name: Fetch and Clean IPv4 CN Rules
+        run: |
+          # 1. 下载上游高逸泛中国大陆 IP 规则列表
+          curl -sSL "https://raw.githubusercontent.com/gaoyifan/china-operator-ip/ip-lists/china.txt" -o cn_raw.txt
+          
+          # 2. 严格过滤：剔除注释、空行，仅保留纯 IPv4 地址段
+          grep -v '#' cn_raw.txt | grep -v ':' | sed '/^[[:space:]]*$/d' > cn.txt
+          
+          echo "Total IPv4 CN CIDR entries: $(wc -l < cn.txt)"
+          mkdir -p dist
+
+      - name: Build geoip.dat
+        run: |
+          $(go env GOPATH)/bin/geoip -c config.json
+          
+          # 生成 sha256 校验和
+          cd dist
+          sha256sum geoip.dat > geoip.dat.sha256sum
+          echo "SHA256: $(cat geoip.dat.sha256sum)"
+
+      - name: Prepare Release Info
+        id: info
+        run: |
+          BUILD_TIME=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          TAG_NAME="release"
+          echo "build_time=${BUILD_TIME}" >> $GITHUB_OUTPUT
+          echo "tag_name=${TAG_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Publish Release to GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.info.outputs.tag_name }}
+          name: "GeoIP Release (${{ steps.info.outputs.build_time }})"
+          make_latest: true
+          files: |
+            dist/geoip.dat
+            dist/geoip.dat.sha256sum
+          body: |
+            ### Custom GeoIP Database
+            - **Build Time**: `${{ steps.info.outputs.build_time }}`
+            - **Upstream (CN IPv4)**: [gaoyifan/china-operator-ip](https://github.com/gaoyifan/china-operator-ip/blob/ip-lists/china.txt)
+            - **Included Rules**: `cn` (IPv4), `private`
+            
+            #### Direct Download Link:
+            - `geoip.dat`: `https://github.com/${{ github.repository }}/releases/latest/download/geoip.dat`
+            - `sha256sum`: `https://github.com/${{ github.repository }}/releases/latest/download/geoip.dat.sha256sum`
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
