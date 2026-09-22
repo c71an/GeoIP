@@ -2,8 +2,8 @@ name: Build and Release Custom GeoIP
 
 on:
   schedule:
-    # 每天 UTC 20:00 (北京时间 04:00) 自动同步上游并构建
-    - cron: '0 20 * * *'
+    # 每周一 UTC 00:00 (北京时间 08:00) 自动同步上游并构建
+    - cron: '0 0 * * 1'
   workflow_dispatch: # 支持在 GitHub Actions 页面手动点击运行
   push:
     branches:

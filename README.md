@@ -4,9 +4,9 @@
 
 ## 🎯 规则特性
 
-- **CN 规则**：以 [gaoyifan/china-operator-ip](https://github.com/gaoyifan/china-operator-ip) 的 `china.txt` 作为 IPv4 上游，每日自动同步。
+- **CN 规则**：以 [gaoyifan/china-operator-ip](https://github.com/gaoyifan/china-operator-ip) 的 `china.txt` 作为 IPv4 上游，每周自动同步。
 - **Private 规则**：包含本地链路、局域网私有网段等标准保留 IP 地址。
-- **自动构建发布**：每天定时触发 GitHub Actions 编译并自动更新至 GitHub Releases。
+- **自动构建发布**：每周一自动触发 GitHub Actions 编译并更新至 GitHub Releases。
 - **永久固定直链**：支持各类客户端直接配置固定链接自动更新。
 
 ---
